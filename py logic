@@ -1,0 +1,82 @@
+import os
+import time
+from web3 import Web3
+from web3.exceptions import TransactionNotFound
+from dotenv import load_dotenv
+import json
+
+# Load environment variables
+load_dotenv()
+
+# Load configs
+with open("erc20_abi.json") as f:
+    ERC20_ABI = json.load(f)
+
+from config import TOKEN_CONFIGS
+
+# Connect to Celo network
+w3 = Web3(Web3.HTTPProvider(os.getenv("RPC_URL")))
+if not w3.is_connected():
+    raise Exception("Failed to connect to Celo node")
+
+# Load private key and addresses
+sender_private_key = os.getenv("SENDER_PRIVATE_KEY")
+sender_address = w3.eth.account.from_key(sender_private_key).address
+receiver_address = os.getenv("RECEIVER_WALLET")
+loop_interval = int(os.getenv("LOOP_INTERVAL_SECONDS"))
+
+print(f"Bot running for sender: {sender_address}")
+print(f"Receiver: {receiver_address}")
+
+def send_token(config):
+    contract_address = w3.toChecksumAddress(config["contract_address"])
+    amount = int(config["amount_to_send_wei"])
+
+    contract = w3.contract(address=contract_address, abi=ERC20_ABI)
+
+    nonce = w3.eth.get_transaction_count(sender_address)
+
+    transaction = contract.functions.transfer(receiver_address, amount).build_transaction({
+        'chainId': 42220,  # Celo Mainnet
+        'gas': 200000,
+        'gasPrice': w3.eth.generate_gas_price({'maxPriorityFeePerGas': w3.toWei('1.5', 'gwei')}),
+        'nonce': nonce,
+    })
+
+    signed_txn = w3.eth.account.sign_transaction(transaction, sender_private_key)
+    tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+
+    print(f"[{config['symbol']}] Sent {amount / 1e18} {config['symbol']} | Tx: {tx_hash.hex()}")
+
+    # Wait for receipt
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+    print(f"[{config['symbol']}] Transaction confirmed in block {tx_receipt['blockNumber']}")
+
+def check_balance(config):
+    contract_address = w3.toChecksumAddress(config["contract_address"])
+    contract = w3.contract(address=contract_address, abi=ERC20_ABI)
+    balance = contract.functions.balanceOf(sender_address).call()
+    print(f"[{config['symbol']}] Balance: {balance / 1e18} {config['symbol']}")
+
+def run_loop(config):
+    print(f"\n🚀 Starting bot for {config['symbol']}...")
+    while True:
+        try:
+            send_token(config)
+            time.sleep(loop_interval)
+        except Exception as e:
+            print(f"[ERROR] {config['symbol']} bot failed: {str(e)}")
+            time.sleep(10)
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: python run_bot.py <token_symbol>")
+        exit(1)
+
+    token_symbol = sys.argv[1].upper()
+    if token_symbol not in TOKEN_CONFIGS:
+        print(f"Invalid token symbol. Available: {list(TOKEN_CONFIGS.keys())}")
+        exit(1)
+
+    run_loop(TOKEN_CONFIGS[token_symbol])
