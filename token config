@@ -1,0 +1,32 @@
+TOKEN_CONFIGS = {
+    "CELO": {
+        "symbol": "CELO",
+        "contract_address": "0x471EcE3750Da237f93B8E339c536989b8978a438",
+        "amount_to_send_wei": 1000000000000000000,  # 1 CELO
+    },
+    "cUSD": {
+        "symbol": "cUSD",
+        "contract_address": "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+        "amount_to_send_wei": 1000000000000000000,  # 1 cUSD
+    },
+    "EURO": {
+        "symbol": "EURO",
+        "contract_address": "0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73",
+        "amount_to_send_wei": 1000000000000000000,  # 1 EURO
+    },
+    "BRL": {
+        "symbol": "BRL",
+        "contract_address": "0xe8537a3d056da446677b9e9d6c5db704eaab4787",
+        "amount_to_send_wei": 1000000000000000000,  # 1 BRL
+    },
+    "COL": {
+        "symbol": "COL",
+        "contract_address": "0x8a567e2ae79ca692bd748ab832081c45de4041ea",
+        "amount_to_send_wei": 1000000000000000000,  # 1 COL
+    },
+    "GLO": {
+        "symbol": "GLO",
+        "contract_address": "0x4F604735c1cF31399C6E711D5962b2B3E0225AD3",
+        "amount_to_send_wei": 1000000000000000000,  # 1 GLO
+    },
+}
