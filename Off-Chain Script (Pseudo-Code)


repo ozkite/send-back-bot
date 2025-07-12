@@ -1,0 +1,56 @@
+const { ethers } = require("ethers");
+const provider = new ethers.providers.WebSocketProvider("wss://mainnet.infura.io/ws/v3/YOUR_INFURA_PROJECT_ID");
+const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY", provider);
+const contract = new ethers.Contract("YOUR_CONTRACT_ADDRESS", ["YOUR_CONTRACT_ABI"], wallet);
+
+async function monitorMempool() {
+    provider.on("pending", async (txHash) => {
+        try {
+            const tx = await provider.getTransaction(txHash);
+            if (!tx) return;
+
+            // Filter for specific transactions (e.g., Uniswap swaps)
+            if (tx.to === "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D") { // Uniswap V2 Router
+                const gasPrice = tx.gasPrice;
+                const gasLimit = tx.gasLimit;
+                const decodedData = parseTransactionData(tx.data); // Parse transaction data (e.g., swap details)
+
+                // Check if transaction is worth frontrunning (e.g., large swap)
+                if (isProfitable(decodedData)) {
+                    // Calculate competitive gas price (e.g., 10% higher than target)
+                    const newGasPrice = gasPrice.mul(110).div(100);
+
+                    // Prepare frontrunning transaction
+                    const frontrunTx = await contract.executeSwap(
+                        decodedData.amountIn,
+                        decodedData.amountOutMin,
+                        decodedData.path,
+                        Math.floor(Date.now() / 1000) + 60, // Deadline: 60 seconds from now
+                        {
+                            gasPrice: newGasPrice,
+                            gasLimit: gasLimit.add(10000), // Slightly higher gas limit
+                        }
+                    );
+
+                    console.log(`Frontrunning transaction sent: ${frontrunTx.hash}`);
+                }
+            }
+        } catch (error) {
+            console.error("Error processing transaction:", error);
+        }
+    });
+}
+
+function parseTransactionData(data) {
+    // Decode transaction data (e.g., using ethers.utils.Interface)
+    // Extract amountIn, amountOutMin, path, etc.
+    // Return parsed data
+}
+
+function isProfitable(decodedData) {
+    // Implement logic to determine if the transaction is worth frontrunning
+    // E.g., check for arbitrage opportunities or high-value swaps
+    return true; // Placeholder
+}
+
+monitorMempool();
