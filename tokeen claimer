@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+contract TokenClaim {
+    address public owner;
+    mapping(address => bool) public isAuthorized;
+    mapping(address => bool) public hasClaimed;
+
+    event TokensClaimed(address indexed claimer);
+    event Authorized(address indexed wallet);
+    event Unauthorized(address indexed wallet);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Solo el dueño puede hacer esto");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
+
+    /**
+     * @dev Autoriza una dirección para reclamar tokens.
+     * Solo el dueño puede llamar esta función.
+     */
+    function authorizeWallet(address wallet) external onlyOwner {
+        require(!isAuthorized[wallet], "Ya autorizado");
+        isAuthorized[wallet] = true;
+        emit Authorized(wallet);
+    }
+
+    /**
+     * @dev Desautoriza una dirección.
+     * Solo el dueño puede llamar esta función.
+     */
+    function unauthorizeWallet(address wallet) external onlyOwner {
+        require(isAuthorized[wallet], "No autorizado");
+        isAuthorized[wallet] = false;
+        emit Unauthorized(wallet);
+    }
+
+    /**
+     * @dev Reclama tokens (CELO o ETH).
+     * Puede modificarse para enviar ERC-20 u otros activos.
+     */
+    function claimTokens() external {
+        require(isAuthorized[msg.sender], "No estás autorizado");
+        require(!hasClaimed[msg.sender], "Ya reclamaste tus tokens");
+
+        uint256 amount = 1 ether; // Cambia según lo que quieras dar
+        hasClaimed[msg.sender] = true;
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Transferencia fallida");
+
+        emit TokensClaimed(msg.sender);
+    }
+
+    /**
+     * @dev Permite al dueño retirar fondos del contrato
+     */
+    function withdraw() external onlyOwner {
+        uint256 contractBalance = address(this).balance;
+        require(contractBalance > 0, "Sin saldo");
+
+        (bool success, ) = payable(owner).call{value: contractBalance}("");
+        require(success, "Retiro fallido");
+    }
+
+    /**
+     * @dev Recibe CELO/ETH normalmente
+     */
+    receive() external payable {}
+}
